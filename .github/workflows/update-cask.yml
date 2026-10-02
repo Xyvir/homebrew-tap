@@ -1,0 +1,65 @@
+name: Update the Lithic cask
+
+# The cask is pulled from the newest Lithic release rather than pushed by that project's
+# release job: a workflow's token cannot write to another repository, and this way there is
+# no secret to mint or rotate. Hourly, because Lithic releases on every push that changes
+# something load-bearing, and a cask a day behind is a `brew install` that installs
+# yesterday's build.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One writer, so two runs cannot both decide the cask is stale and race to commit it.
+concurrency:
+  group: cask
+
+jobs:
+  update:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Tap
+        uses: actions/checkout@v5
+
+      - name: Regenerate the Cask from the Newest Release
+        run: bash scripts/update-cask.sh
+
+      # Checked before it is committed rather than after somebody's install fails. `ruby -c`
+      # is the syntax check a cask actually needs; `brew audit` is deliberately not run: its
+      # notarization rule is the one check an unsigned cask cannot pass, which is the whole
+      # reason this tap exists.
+      - name: Check the Cask
+        run: |
+          if [ ! -f Casks/lithic.rb ]; then
+            echo "No Lithic release carries a disk image yet; nothing to check."
+            exit 0
+          fi
+          ruby -c Casks/lithic.rb
+          version=$(sed -n 's/^  version "\(.*\)"$/\1/p' Casks/lithic.rb | head -n 1)
+          sha=$(sed -n 's/^  sha256 "\(.*\)"$/\1/p' Casks/lithic.rb | head -n 1)
+          if [ -z "$version" ] || [ -z "$sha" ]; then
+            echo "::error::The cask is missing its version or its checksum."
+            exit 1
+          fi
+          echo "Cask checks out: version $version, sha256 $sha"
+
+      - name: Commit When the Cask Changed
+        run: |
+          if [ ! -f Casks/lithic.rb ]; then
+            echo "Nothing to commit: no Lithic release carries a disk image yet."
+            exit 0
+          fi
+          git add Casks/lithic.rb
+          if git diff --cached --quiet --exit-code -- Casks/lithic.rb; then
+            echo "The cask is already current."
+            exit 0
+          fi
+          version=$(sed -n 's/^  version "\(.*\)"$/\1/p' Casks/lithic.rb | head -n 1)
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Lithic $version"
+          git push
