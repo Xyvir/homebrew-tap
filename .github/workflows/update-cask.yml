@@ -25,7 +25,14 @@ jobs:
       - name: Checkout Tap
         uses: actions/checkout@v5
 
+      # The token a workflow is given is not in the shell's environment: `github.token`
+      # arrives through this variable and nothing else, and without it `gh api` refuses to
+      # run at all — which is what the first run of this workflow reported. Reading a public
+      # repository's releases needs nothing beyond it, and it is the tap's own token, so the
+      # commit below is the only write it is used for.
       - name: Regenerate the Cask from the Newest Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/update-cask.sh
 
       # Checked before it is committed rather than after somebody's install fails. `ruby -c`
