@@ -1,8 +1,8 @@
 cask "lithic" do
-  version "10.05.26-1534"
-  sha256 "953a91924c668f2bff4708c5a28d604cf9471bfdd9ddcf1f37a873c4f5322d61"
+  version "10.05.26-2055"
+  sha256 "dd7e0080eed0d86c4e7d9893be803f31a16f4f099b39128e7ed81613949f4568"
 
-  url "https://github.com/Xyvir/Lithic-UK/releases/download/build-2026.10.05-1534/Lithic_#{version}.dmg"
+  url "https://github.com/Xyvir/Lithic-UK/releases/download/build-2026.10.05-2055/Lithic_#{version}.dmg"
   name "Lithic"
   desc "Outliner knowledgebase built on TiddlyWiki"
   homepage "https://lithic.uk"
